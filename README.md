@@ -1,32 +1,39 @@
-# oficina-app
-Aplicação principal **Spring Boot** da oficina (Tech Challenge Fase 3 — SOAT), executada em **Kubernetes**.
+# oficina-auth-lambda
+Função **serverless** de autenticação do cliente por **CPF** (Tech Challenge Fase 3 — SOAT).
 ## Propósito
-- APIs administrativas (JWT **Keycloak** / `ROLE_ADMIN`).
-- APIs públicas (consulta de OS por `trackingCode`, aprovação de orçamento).
-- APIs de cliente com JWT emitido pela **Lambda** (`ROLE_CLIENTE`), quando configurado.
-- Ordem de serviço, catálogo, cadastros, métricas e notificações.
+- Receber o CPF (via API Gateway ou integração).
+- Validar dígitos verificadores.
+- Consultar o cliente em **PostgreSQL** (`clientes.cpf_cnpj`, `clientes.status`).
+- Devolver **JWT** HS256 (`ROLE_CLIENTE`) e metadados (`cliente_id`, `cliente_status`) consumíveis pela aplicação principal.
 ## Stack
-- Java 21, Spring Boot 3.x
-- PostgreSQL, Liquibase
-- Docker / Kubernetes
-- Observabilidade: Actuator, Prometheus (`/actuator/prometheus`), logs JSON (perfil `k8s`)
+- Python 3.12+
+- `PyJWT`, `psycopg2`
+- Deploy: **AWS SAM** (`template.yaml`) ou empacotamento para Lambda
 ## Execução local
 ```bash
-docker compose up --build
+cd auth-lambda
+python -m venv .venv
+.venv\Scripts\activate   # Windows
+pip install -r requirements.txt
+set JWT_SECRET=seu-segredo-minimo-32-chars-recomendado!!
+set JWT_ISSUER=https://oficina.local/auth/cpf
+set DATABASE_URL=postgresql://usuario:senha@host:5432/oficina
+python -c "from src.handler import handler; print(handler({'body':'{\"cpf\":\"52998224725\"}'}, None))"
 ```
-- Swagger: `http://localhost:8080/api/swagger-ui/index.html`
-- Health: `http://localhost:8080/api/actuator/health`
+Variáveis: ver tabela no código-fonte (`README` interno ao pacote, se existir).
 ## Deploy
-- Imagem: `Dockerfile` + registry (ex.: GHCR).
-- Cluster: aplicar manifests em `/k8s` (outro repo ou mesmo processo, conforme decisão da equipa).
-- Variáveis: `DB_*`, `JWT_*`, `JWT_CPF_*` quando usar autenticação CPF.
+- `sam build && sam deploy --guided` (VPC/Security Group alinhados ao RDS).
+- CI: GitHub Actions (lint/teste) no push/PR.
 ## Diagrama (repositório)
 ```text
-[API Gateway] ---> [Ingress K8s] ---> [Spring Boot]
-                      /                    |
-            [Lambda / JWT CPF]          [PostgreSQL]
+[API Gateway] -> [Lambda auth] -> [RDS PostgreSQL]
+                      |
+                      v
+                 JWT HS256
 ```
+## Integração com a app
+- A app Spring (`oficina-app`) valida o mesmo `issuer` e segredo (`security.cpf-jwt`).
 ## Documentação de API
-- **Swagger / OpenAPI:** `/api/swagger-ui` (com `context-path` `/api`).
+Esta função é invocada pelo **Gateway** (não expõe Swagger próprio). Contrato do body: `{ "cpf": "00000000000" }`.
 ## Convite
-Adicionar **`soat-architecture`** com leitura (portal SOAT).
+Adicionar o utilizador **`soat-architecture`** com permissão de leitura (conforme portal SOAT).
