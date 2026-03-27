@@ -1,39 +1,37 @@
-# oficina-auth-lambda
-Função **serverless** de autenticação do cliente por **CPF** (Tech Challenge Fase 3 — SOAT).
-## Propósito
-- Receber o CPF (via API Gateway ou integração).
-- Validar dígitos verificadores.
-- Consultar o cliente em **PostgreSQL** (`clientes.cpf_cnpj`, `clientes.status`).
-- Devolver **JWT** HS256 (`ROLE_CLIENTE`) e metadados (`cliente_id`, `cliente_status`) consumíveis pela aplicação principal.
-## Stack
-- Python 3.12+
-- `PyJWT`, `psycopg2`
-- Deploy: **AWS SAM** (`template.yaml`) ou empacotamento para Lambda
-## Execução local
+# Autenticacao CPF (funcao serverless) - Fase 3
+
+Codigo destinado a viver num **repositorio proprio** (`oficina-auth-lambda`) com CI/CD. Mantido aqui como **fonte inicial** ate a divisao dos quatro repositorios.
+
+## Comportamento alvo (enunciario Fase 3)
+
+1. Receber **CPF** (API Gateway ou integracao direta).
+2. Validar formato e digitos verificadores.
+3. Consultar **clientes** na base PostgreSQL (`clientes.cpf_cnpj`, `clientes.status`: ATIVO/INATIVO).
+4. Emitir **JWT** HS256 com `issuer`, `sub`, `cliente_id`, `cliente_status`, `authorities: [ROLE_CLIENTE]` consumivel pela aplicacao Spring (`security.cpf-jwt`). Resposta JSON inclui `cliente_id` e `cliente_status`.
+
+## Variaveis
+
+| Variavel | Descricao |
+|----------|-----------|
+| `JWT_SECRET` | Segredo partilhado com a app (minimo 32 caracteres recomendado) |
+| `JWT_ISSUER` | Mesmo valor que `JWT_CPF_ISSUER` na app |
+| `DATABASE_URL` | JDBC ou URI Postgres (ex.: RDS) |
+| `DB_USER` / `DB_PASS` | Credenciais |
+
+## Execucao local (teste)
+
 ```bash
 cd auth-lambda
 python -m venv .venv
-.venv\Scripts\activate   # Windows
+.venv\Scripts\activate
 pip install -r requirements.txt
-set JWT_SECRET=seu-segredo-minimo-32-chars-recomendado!!
+set JWT_SECRET=local-dev-secret-key-32bytes!!
 set JWT_ISSUER=https://oficina.local/auth/cpf
-set DATABASE_URL=postgresql://usuario:senha@host:5432/oficina
-python -c "from src.handler import handler; print(handler({'body':'{\"cpf\":\"52998224725\"}'}, None))"
+python -c "from src.handler import handler; print(handler({'body':'{\"cpf\":\"00000000000\"}'}, None))"
 ```
-Variáveis: ver tabela no código-fonte (`README` interno ao pacote, se existir).
-## Deploy
-- `sam build && sam deploy --guided` (VPC/Security Group alinhados ao RDS).
-- CI: GitHub Actions (lint/teste) no push/PR.
-## Diagrama (repositório)
-```text
-[API Gateway] -> [Lambda auth] -> [RDS PostgreSQL]
-                      |
-                      v
-                 JWT HS256
-```
-## Integração com a app
-- A app Spring (`oficina-app`) valida o mesmo `issuer` e segredo (`security.cpf-jwt`).
-## Documentação de API
-Esta função é invocada pelo **Gateway** (não expõe Swagger próprio). Contrato do body: `{ "cpf": "00000000000" }`.
-## Convite
-Adicionar o utilizador **`soat-architecture`** com permissão de leitura (conforme portal SOAT).
+
+## Deploy AWS
+
+Usar **SAM** (`template.yaml`): `sam build && sam deploy --guided`.
+
+A funcao deve ficar na **mesma VPC** do RDS ou usar **RDS Proxy**; ajustar security groups.
