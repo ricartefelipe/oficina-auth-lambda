@@ -3,9 +3,9 @@ name: CI (Python)
 on:
   workflow_dispatch:
   push:
-    branches: [main, master, develop, hml, prd]
+    branches: [develop, master]
   pull_request:
-    branches: [main, master, develop, hml, prd]
+    branches: [develop, master]
 
 jobs:
   lint:
