@@ -25,7 +25,7 @@ cd auth-lambda
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
-set JWT_SECRET=local-dev-secret-key-32bytes!!
+set JWT_SECRET=<JWT_SECRET>
 set JWT_ISSUER=https://oficina.local/auth/cpf
 python -c "from src.handler import handler; print(handler({'body':'{\"cpf\":\"00000000000\"}'}, None))"
 ```
